@@ -15,6 +15,8 @@ LOCK_REVERSED = False
 RELAY_REVERSED = False
 IN_1_REVERSED = True
 FIXED_UNLOCK_DELAY = 7  # seconds to remain unlocked
+INTERLOCK_TIMEOUT_CURRENT = .5
+INTERLOCK_TIMEOUT_TIME = 30 # in Seconds
 
 # =========================================================================
 # ====================== Remote Interlock Settings ========================
