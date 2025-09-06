@@ -275,9 +275,11 @@ tasmota_base_url = f"http://{config.TASMOTA_HOST}/cm?user={config.TASMOTA_USER}&
 def reset_interlock_power_usage() -> bool:
     if config.TASMOTA_HOST:
         logger.debug("Resetting power usage from remote interlock!")
-        r = urequests.get(
-            tasmota_base_url + "Backlog%20EnergyToday%200%3B%20EnergyTotal%200%3B"
-        )
+        # r = urequests.get(
+        #    tasmota_base_url + "Backlog%20EnergyToday%200%3B%20EnergyTotal%200%3B")
+        r = urequests.get(tasmota_base_url + f"EnergyToday%200")
+        r = urequests.get(tasmota_base_url + f"EnergyYesterday%200")
+        r = urequests.get(tasmota_base_url + f"EnergyTotal%200")
         return True
 
 
@@ -308,6 +310,16 @@ def get_interlock_power_usage() -> float | None:
         logger.debug("Getting power usage from remote interlock!")
         r = urequests.get(tasmota_base_url + "EnergyTotal")
         return float(r.json()["EnergyTotal"]["Total"])
+        
+    else:
+        None
+
+def get_interlock_current_draw() -> float | None:
+    if config.TASMOTA_HOST:
+        logger.debug("Getting active current usage from remote interlock!")
+        r = urequests.get(tasmota_base_url + "Status%208")
+        return float(r.json()["StatusSNS"]["ENERGY"]["Current"])
+        
     else:
         None
 
