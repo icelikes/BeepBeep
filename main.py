@@ -23,7 +23,7 @@ hardware.led_off()
 # setup is starting
 hardware.rgb_led_set(hardware.RGB_PURPLE)
 hardware.alert(rgb_return_colour=hardware.RGB_PURPLE)
-hardware.lcd.print("Initialising...")
+hardware.lcd.print("Initializing...")
 
 
 INTERLOCK_SESSION = {
@@ -148,7 +148,7 @@ def connect_wifi(silent=False):
     if not silent:
         hardware.lcd.clear()
         hardware.lcd.print("Connecting WiFi")
-    hardware.status_led_off()
+        hardware.status_led_off()
     try:
         sta_if.connect(config.WIFI_SSID, config.WIFI_PASS)
     except OSError as e:
@@ -280,6 +280,109 @@ def log_door_swipe(card_id, rejected=False, locked_out=False):
             logger.warn(f"Exception when logging {success_string} access!")
             logger.error(e)
 
+def lcd_interlock_unlock_success():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("   Authorized!  ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print("  Device Active ")
+    hardware.lcd.backlight()
+
+def lcd_interlock_unlock_fail():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print(" Unauthorized!  ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print(" Contact MNGMT! ")
+    hardware.lcd.backlight()
+
+def lcd_interlock_timeout_warning(seconds):
+    # hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print(" Device Active  ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print(f" Off in {seconds} Secs ")
+    # hardware.lcd.backlight()
+    
+def lcd_door_access_success():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("   Authorized!  ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print(" Door Unlocked! ")
+    hardware.lcd.backlight()
+
+def lcd_door_access_fail():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("   Locked Out!  ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print(" Contact MNGMT! ")
+    hardware.lcd.backlight()
+
+def lcd_interlock_standby_msg():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("   Interlock    ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print("Swipe To Unlock!")
+    hardware.lcd.backlight()
+
+def lcd_door_access_standby_msg():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("  Door Locked!  ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print("Swipe To Unlock!")
+    hardware.lcd.backlight()
+
+def lcd_interlock_session_end():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("  Session End!  ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print(" Interlock Off  ")
+    hardware.lcd.backlight()
+
+def lcd_device_locked_out():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("     Device     ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print("  Locked Out!   ")
+    hardware.lcd.backlight()
+
+def lcd_door_access_bump_door():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("  Bumping Door  ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print("  In 5 Seconds  ")
+    hardware.lcd.backlight()
+
+def lcd_access_door_open():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("    Warning!    ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print("   Close Door   ")
+    hardware.lcd.backlight()
+
+def lcd_rfid_tag_unknown():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print(" Unknown Card   ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print(" Contact MNGMT! ")
+    hardware.lcd.backlight()
+
+def lcd_device_reboot():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0,0)
+    hardware.lcd.print("     Device     ")
+    hardware.lcd.set_cursor(0,1)
+    hardware.lcd.print("     Reboot     ")
+    hardware.lcd.backlight()
 
 def interlock_end_session():
     if (
@@ -304,6 +407,10 @@ def interlock_end_session():
     INTERLOCK_SESSION["session_kwh"] = 0
     hardware.interlock_power_control(False)
     hardware.interlock_session_ended()
+    lcd_interlock_session_end()
+    time.sleep(2.0)
+    hardware.reset_interlock_power_usage()
+    print_device_standby_message()
 
 
 def handle_swipe_door(card: str):
@@ -321,6 +428,7 @@ def handle_swipe_door(card: str):
 
     else:
         log_door_swipe(card, rejected=True)
+        lcd_door_access_fail()
         hardware.alert()
 
 
@@ -331,6 +439,9 @@ def handle_swipe_interlock(card: str):
             "command": "interlock_session_start",
             "card_id": card,
         }
+        hardware.reset_interlock_power_usage()
+        lcd_interlock_unlock_success()
+        time.sleep(1.0)
         try:
             websocket.send(json.dumps(interlock_packet))
         except Exception as e:
@@ -345,6 +456,7 @@ def handle_swipe_interlock(card: str):
         try:
             websocket.send(json.dumps(interlock_packet))
             interlock_end_session()
+            print_device_standby_message
         except Exception as e:
             logger.error("Failed to turn off interlock!")
             logger.error(e)
@@ -353,6 +465,7 @@ def handle_swipe_interlock(card: str):
     # end the current interlock session
     else:
         interlock_end_session()
+        print_device_standby_message()
 
 
 def handle_swipe_memberbucks(card_id: str):
@@ -375,16 +488,15 @@ def handle_swipe_memberbucks(card_id: str):
 
 def print_device_standby_message():
     if config.DEVICE_TYPE == "door":
-        hardware.lcd.clear()
-        hardware.lcd.print("Swipe To Unlock! ")
-        hardware.lcd.print_rocket()
+        lcd_door_access_standby_msg()
+        
     elif config.DEVICE_TYPE == "memberbucks" or config.DEVICE_TYPE == "interlock":
-        hardware.lcd.clear()
         if sta_if.isconnected():
             if config.DEVICE_TYPE == "memberbucks":
                 hardware.lcd.print(f"${config.VEND_PRICE/100} Swipe Card")
             else:
-                hardware.lcd.print("Swipe To Unlock!")
+                lcd_interlock_standby_msg()
+
         else:
             hardware.lcd.print(f"No Connection")
 
@@ -395,8 +507,8 @@ def unlock_door():
     hardware.unlock()
     hardware.relay_on()
     logger.warn("Unlocked!")
-    hardware.lcd.print("Door Unlocked!")
     hardware.rgb_led_set(hardware.RGB_GREEN)
+    lcd_door_access_success
     hardware.buzz_ok(flash_led=False)
 
     if config.DOOR_SENSOR_ENABLED:
@@ -443,14 +555,13 @@ hardware.led_on()
 time.sleep(0.5)
 hardware.led_off()
 hardware.rgb_led_set(hardware.RGB_BLUE)
-
-
 print_device_standby_message()
 
 door_previous_state = hardware.get_door_sensor_state()
 in_1_previous_state = hardware.get_in_1_state()
 wifi_status_led_toggle = False
 wifi_status_led_update = time.ticks_ms()
+interlock_timeout_timer = None
 
 hardware.out_1_on()
 
@@ -492,8 +603,7 @@ while True:
             > config.DOOR_OPEN_ALARM_TIMEOUT * 1000
         ):
             logger.warn("Door left open alarm!")
-            hardware.lcd.clear()
-            hardware.lcd.print("Door Left Open!")
+            lcd_access_door_open()
             hardware.buzzer_on()
 
     try:
@@ -532,6 +642,10 @@ while True:
                     hardware.status_led_on()
                     wifi_status_led_toggle = True
 
+        # TODO rate limit to 1 second
+        if (interlock_timeout_timer is not None):
+                        lcd_interlock_timeout_warning(config.INTERLOCK_TIMEOUT_TIME-(time.ticks_diff(time.ticks_ms(), interlock_timeout_timer)//1000))              
+
         if (
             time.ticks_diff(time.ticks_ms(), ten_second_cron_update)
             > config.CRON_PERIOD
@@ -543,7 +657,7 @@ while True:
             if time.ticks_diff(time.ticks_ms(), last_pong) > config.CRON_PERIOD * 3:
                 websocket = None
                 logger.info("Websocket not open (pong timeout), trying to reconnect.")
-                print_device_standby_message()
+                
 
                 # this stops us trying to reconnect every 10 seconds and holding up the main loop
                 last_pong = time.ticks_ms()
@@ -560,19 +674,18 @@ while True:
                     hardware.status_led_off()
                     continue
 
-                if (
-                    INTERLOCK_SESSION.get("session_id") is not None
-                    and INTERLOCK_SESSION.get("session_id") != "system"
-                ):
-                    INTERLOCK_SESSION["session_kwh"] = (
-                        hardware.get_interlock_power_usage()
-                    )
+                if (INTERLOCK_SESSION.get("session_id") is not None
+                        and INTERLOCK_SESSION.get("session_id") != "system"):
+
+                    INTERLOCK_SESSION["session_kwh"] = (hardware.get_interlock_power_usage())
+                    INTERLOCK_SESSION["active_current"] = (hardware.get_interlock_current_draw())
                     logger.debug("Sending interlock session update")
                     interlock_packet = {
                         "command": "interlock_session_update",
                         "session_id": INTERLOCK_SESSION.get("session_id"),
                         "session_kwh": INTERLOCK_SESSION.get("session_kwh"),
                     }
+                    
                     try:
                         websocket.send(json.dumps(interlock_packet))
                     except Exception as e:
@@ -580,6 +693,25 @@ while True:
                         logger.error(e)
                         websocket = None
                         continue
+                    
+                    logger.debug(f"Timeout - {interlock_timeout_timer}")
+                    if (interlock_timeout_timer is None and INTERLOCK_SESSION.get("active_current")<config.INTERLOCK_TIMEOUT_CURRENT):
+                        interlock_timeout_timer = time.ticks_ms()
+                        hardware.lcd.clear()
+                        lcd_interlock_timeout_warning(config.INTERLOCK_TIMEOUT_TIME)
+                        logger.error("int cound down start")
+  
+                    if (INTERLOCK_SESSION.get("active_current")>config.INTERLOCK_TIMEOUT_CURRENT):
+                        interlock_timeout_timer = None
+                        lcd_interlock_unlock_success()
+
+                    if (interlock_timeout_timer is not None and time.ticks_diff(time.ticks_ms(), interlock_timeout_timer)>config.INTERLOCK_TIMEOUT_TIME*1000):
+                        interlock_timeout_timer = None
+                        logger.error("int end")
+                        interlock_end_session()
+                        
+
+                                    
 
             else:
                 logger.info("Websocket not open, trying to reconnect.")
@@ -610,6 +742,8 @@ while True:
                         logger.warn("Rebooting device!")
                         if config.DEVICE_TYPE == "interlock":
                             interlock_end_session()
+                            lcd_device_reboot()
+                            time.sleep(2.00)
                         else:
                             hardware.lock()
                             hardware.buzz_action()
@@ -620,10 +754,15 @@ while True:
                         locked_out = data.get("locked_out")
                         logger.info(f"Updating device locked out {locked_out}!")
                         STATE["locked_out"] = locked_out
+                        if locked_out:
+                            lcd_device_locked_out()
+                        else:
+                            lcd_interlock_standby_msg
                         save_state(STATE)
 
                     elif data.get("command") == "bump" and config.DEVICE_TYPE == "door":
                         logger.info("Bumping Door!")
+                        lcd_door_access_bump_door()
                         unlock_door()
 
                     elif data.get("command") == "sync":
@@ -645,6 +784,7 @@ while True:
                                 INTERLOCK_SESSION["session_id"] = (
                                     "system"  # special state - manually turned on by the system
                                 )
+                                lcd_interlock_unlock_success()
                                 hardware.interlock_session_started()
 
                             elif config.DEVICE_TYPE == "door":
@@ -661,6 +801,7 @@ while True:
 
                         elif config.DEVICE_TYPE == "interlock":
                             logger.info("Turning off interlock from manual request!")
+                            lcd_interlock_session_end
                             interlock_end_session()
                     elif data.get("command") == "interlock_session_start":
                         if config.DEVICE_TYPE == "interlock":
@@ -671,6 +812,7 @@ while True:
 
                             if hardware.interlock_power_control(True):
                                 hardware.interlock_session_started()
+                                
 
                             else:
                                 logger.warn("Interlock power control failed!")
@@ -682,6 +824,7 @@ while True:
                             hardware.alert()
 
                     elif data.get("command") == "interlock_session_update":
+                        
                         pass
 
                     elif data.get("command") == "debit":
