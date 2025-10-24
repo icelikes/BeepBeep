@@ -2,9 +2,10 @@ import config
 import time
 import ulogging
 import urequests
-from machine import WDT, Pin, I2C
+from machine import WDT, Pin, I2C, SPI
 from neopixel import NeoPixel
 from ulcdscreen import LcdScreen
+from roundlcd import RoundLcdScreen
 
 ulogging.basicConfig(level=config.LOG_LEVEL)
 logger = ulogging.getLogger("hardware")
@@ -46,10 +47,15 @@ if config.LCD_ENABLE and config.LCD_ADDR in i2c_devices:
         rows=config.LCD_ROWS,
     )
 
+
 else:
     # initialise without i2c address, and it will silently skip all writes to the i2c bus
     logger.error("LCD not found on i2c bus but it's configured!")
     lcd = LcdScreen(i2c, i2c_address=None)
+
+if config.ROUND_LCD_ENABLE:
+    round_lcd = RoundLcdScreen()
+
 
 # setup other pins
 buzzer = None

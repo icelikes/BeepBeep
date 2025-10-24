@@ -69,7 +69,7 @@ VEND_TOGGLE_TIME = 1
 # =========================================================================
 # ============================ LCD Settings ===============================
 # =========================================================================
-LCD_ENABLE = True  # set to False to disable the LCD
+LCD_ENABLE = False  # set to False to disable the LCD
 LCD_ADDR = 0x27  # I2C address of LCD display
 LCD_COLS = 16  # number of columns on the LCD display
 LCD_ROWS = 2  # number of rows on the LCD display
@@ -100,6 +100,14 @@ UART_TX_PIN = 15  # IO num, not pin num - used if WIEGAND_ENABLED is False
 
 WIEGAND_ZERO = 7
 WIEGAND_ONE = 6
+
+ROUND_LCD_ENABLE = False  # set to False to disable the Round LCD
+ROUND_LCD_ROTATION = 0
+ROUND_LCD_SCL = 10
+ROUND_LCD_SDA = 11
+ROUND_LCD_RESET = 12
+ROUND_LCD_CS = 9
+ROUND_LCD_DC = 8
 
 # =========================================================================
 # ========================= Development Settings ==========================

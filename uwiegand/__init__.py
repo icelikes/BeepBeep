@@ -77,7 +77,7 @@ class Wiegand:
             return None
 
         card_uid = self._get_card_uid()
-
+        
         self._last_card = None
 
         return card_uid

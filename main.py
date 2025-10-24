@@ -10,6 +10,7 @@ import hardware
 import utils
 import gc
 
+
 if config.ENABLE_BACKUP_HTTP_SERVER:
     import httpserver
 
@@ -24,6 +25,29 @@ hardware.led_off()
 hardware.rgb_led_set(hardware.RGB_PURPLE)
 hardware.alert(rgb_return_colour=hardware.RGB_PURPLE)
 hardware.lcd.print("Initializing...")
+
+if config.ROUND_LCD_ENABLE:
+    hardware.round_lcd.ready()
+    time.sleep(2.0)
+    hardware.round_lcd.connecting_wifi()
+    time.sleep(2.0)
+    hardware.round_lcd.connecting_websocket()
+    time.sleep(2.0)
+    hardware.round_lcd.ready()
+    time.sleep(2.0)
+    hardware.round_lcd.interlock_active()
+    time.sleep(2.0)
+    hardware.round_lcd.interlock_success()
+    time.sleep(2.0)
+    hardware.round_lcd.access_success()
+    time.sleep(2.0)
+    hardware.round_lcd.access_fail()
+    time.sleep(2.0)
+    hardware.round_lcd.vend_success()
+    time.sleep(2.0)
+    hardware.round_lcd.vend_fail()
+    time.sleep(2.0)
+    hardware.round_lcd.clear()
 
 
 INTERLOCK_SESSION = {
