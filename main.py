@@ -63,6 +63,7 @@ if config.WIEGAND_ENABLED:
         config.WIEGAND_ONE,
         uid_32bit_mode=config.UID_32BIT_MODE,
         timer_id=config.WIEGAND_TIMER_ID,
+        faculty_and_uid_combo=config.FACILITY_AND_UID_COMBO,
     )
 else:
     from urdm6300.urdm6300 import Rdm6300

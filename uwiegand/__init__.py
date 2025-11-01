@@ -26,7 +26,7 @@ MIFARE_MASK = 0b0_11111111_11111111_11111111_11111111_0  # all 4 bytes (32 bits)
 
 
 class Wiegand:
-    def __init__(self, pin0, pin1, callback=None, timer_id=-1, uid_32bit_mode=False):
+    def __init__(self, pin0, pin1, callback=None, timer_id=-1, uid_32bit_mode=False, faculty_and_uid_combo=False):
         """
         pin0 - the GPIO that goes high when a zero is sent by the reader
         pin1 - the GPIO that goes high when a one is sent by the reader
@@ -36,6 +36,10 @@ class Wiegand:
         timer_id - the Timer ID to use for periodic callbacks
         uid_32bit_mode - if True read_card() returns full 32bit mifare code, otherwise
                          if False read_card() returns only 24bit mifare code
+        faculty_and_uid_combo - if True read_card() returns facility code + UID
+                               as a single integer (e.g. facility 123 and UID 456
+                               becomes 123456). If False, read_card() returns just
+                               the UID portion.
         """
         self._pin0 = Pin(pin0, Pin.IN, Pin.PULL_UP)
         self._pin1 = Pin(pin1, Pin.IN, Pin.PULL_UP)
@@ -50,6 +54,7 @@ class Wiegand:
         self._timer.init(period=50, mode=Timer.PERIODIC, callback=self._cardcheck)
         self.cards_read = 0
         self._uid_32bit_mode = uid_32bit_mode
+        self._faculty_and_uid_combo = faculty_and_uid_combo
 
     def _on_pin0(self, newstate):
         self._on_pin(0, newstate)
@@ -76,11 +81,23 @@ class Wiegand:
         if self._last_card is None:
             return None
 
-        card_uid = self._get_card_uid()
+        if self._faculty_and_uid_combo:
+            card_uid = self._read_faculty_and_uid_combo()
+        else:
+            card_uid = self._get_card_uid()
 
         self._last_card = None
 
         return card_uid
+    
+    def _read_faculty_and_uid_combo(self):
+        if self._last_card is None:
+            return None
+
+        facility_code = self._get_facility_code()
+        card_uid = self._get_card_uid()
+
+        return int(f"{facility_code}{card_uid}")
 
     def _get_card_uid(self):
         if self._last_card is None:

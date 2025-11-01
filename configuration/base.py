@@ -126,6 +126,10 @@ ENABLE_BACKUP_HTTP_SERVER = False
 # Set True for full 32bit mifare UIDs or False for 24bit mifare UIDs
 UID_32BIT_MODE = True
 
+# If True, read_card() returns facility code + UID as a single integer
+# (e.g. facility 123 and UID 456 becomes 123456). If False, read_card() returns just the UID portion.
+FACILITY_AND_UID_COMBO = False
+
 # WiFi Tx Power - set to None for max power
 WIFI_TX_POWER = None
 
