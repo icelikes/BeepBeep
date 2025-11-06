@@ -95,17 +95,17 @@ class Wiegand:
             return None
 
         facility_code = self._get_facility_code()
-        card_uid = self._get_card_uid()
-
-        return int(f"{facility_code}{card_uid}")
+        card_id = self._get_card()
+        
+        return int(f"{facility_code}{card_id}")
 
     def _get_card_uid(self):
         if self._last_card is None:
             return None
         if self._uid_32bit_mode:
-            return (self._last_card & MIFARE_24_MASK) >> 1
-        else:
             return (self._last_card & MIFARE_MASK) >> 1
+        else:
+            return (self._last_card & MIFARE_24_MASK) >> 1
 
     def _get_facility_code(self):
         if self._last_card is None:
