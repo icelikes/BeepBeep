@@ -140,6 +140,20 @@ def connect_wifi(silent=False):
     sta_if.active(False)
     time.sleep(0.5)
     sta_if.active(True)
+    if getattr(config, "USE_STATIC_IP", False):
+        try:
+            sta_if.ifconfig(
+                (
+                    config.IP_ADDRESS,
+                    config.SUBNET_MASK,
+                    config.GATEWAY,
+                    config.DNS_SERVER,
+                )
+            )
+            logger.info("Using static IP config: " + config.IP_ADDRESS)
+        except Exception as e:
+            logger.error("Failed to set static IP config, falling back to DHCP")
+            logger.error(e)
     # sta_if.config(pm=sta_if.PM_NONE)  # disable power management
     # sta_if.config(reconnects=-1)
     if config.WIFI_TX_POWER:
@@ -377,6 +391,62 @@ def lcd_rfid_tag_unknown():
     hardware.lcd.print(" Contact MNGMT! ")
     hardware.lcd.backlight()
 
+
+def lcd_fob_tester_standby_msg():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0, 0)
+    hardware.lcd.print("   Fob Tester   ")
+    hardware.lcd.set_cursor(0, 1)
+    hardware.lcd.print("  Swipe A Card  ")
+    hardware.lcd.backlight()
+
+
+def lcd_fob_tester_lookup_pending():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0, 0)
+    hardware.lcd.print(" Looking Up Card")
+    hardware.lcd.set_cursor(0, 1)
+    hardware.lcd.print(" Please Wait... ")
+    hardware.lcd.backlight()
+
+
+def lcd_fob_tester_no_connection():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0, 0)
+    hardware.lcd.print("    Offline     ")
+    hardware.lcd.set_cursor(0, 1)
+    hardware.lcd.print("   No Lookup    ")
+    hardware.lcd.backlight()
+
+
+def lcd_fob_tester_unknown_card():
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0, 0)
+    hardware.lcd.print("  Card Unknown  ")
+    hardware.lcd.set_cursor(0, 1)
+    hardware.lcd.print("  Not Assigned  ")
+    hardware.lcd.backlight()
+
+
+def _lcd_line(text):
+    return str(text or "")[:16].ljust(16)
+
+
+def lcd_fob_tester_lookup_result(full_name, account_status):
+    status_map = {
+        "noob": "Need Induction",
+        "active": "Active",
+        "inactive": "Inactive",
+        "accountonly": "Account Only",
+    }
+
+    hardware.lcd.clear()
+    hardware.lcd.set_cursor(0, 0)
+    hardware.lcd.print(_lcd_line(full_name))
+    hardware.lcd.set_cursor(0, 1)
+    hardware.lcd.print(_lcd_line(status_map.get(account_status, "Status Hidden")))
+    hardware.lcd.backlight()
+
 def lcd_device_reboot():
     hardware.lcd.clear()
     hardware.lcd.set_cursor(0,0)
@@ -487,6 +557,28 @@ def handle_swipe_memberbucks(card_id: str):
         hardware.alert()
 
 
+def handle_swipe_fob_tester(card_id: str):
+    if not sta_if.isconnected() or not (websocket and websocket.open):
+        lcd_fob_tester_no_connection()
+        hardware.alert()
+        return
+
+    lookup_packet = {
+        "command": "fob_lookup",
+        "card_id": card_id,
+        "request_id": str(time.ticks_ms()),
+    }
+
+    try:
+        websocket.send(json.dumps(lookup_packet))
+        lcd_fob_tester_lookup_pending()
+    except Exception as e:
+        logger.error("Failed to send fob lookup packet!")
+        logger.error(e)
+        lcd_fob_tester_no_connection()
+        hardware.alert()
+
+
 def print_device_standby_message():
     if config.DEVICE_TYPE == "door":
         lcd_door_access_standby_msg()
@@ -500,6 +592,12 @@ def print_device_standby_message():
 
         else:
             hardware.lcd.print(f"No Connection")
+
+    elif config.DEVICE_TYPE == "fobtester":
+        if sta_if.isconnected() and websocket and websocket.open:
+            lcd_fob_tester_standby_msg()
+        else:
+            lcd_fob_tester_no_connection()
 
 
 def unlock_door():
@@ -623,6 +721,9 @@ while True:
 
             elif config.DEVICE_TYPE == "memberbucks":
                 handle_swipe_memberbucks(card)
+
+            elif config.DEVICE_TYPE == "fobtester":
+                handle_swipe_fob_tester(card)
 
             # dedupe card reads; keep looping until we've cleared the buffer
             # while not rfid_reader.read_card():
@@ -863,6 +964,21 @@ while True:
                             time.sleep(5)
                             hardware.rgb_led_set(hardware.RGB_BLUE)
                         print_device_standby_message()
+
+                    elif data.get("command") == "fob_lookup_result":
+                        if config.DEVICE_TYPE == "fobtester":
+                            if data.get("found"):
+                                lcd_fob_tester_lookup_result(
+                                    data.get("full_name"),
+                                    data.get("account_status"),
+                                )
+                            elif data.get("reason") == "unknown_card":
+                                lcd_fob_tester_unknown_card()
+                            else:
+                                lcd_fob_tester_no_connection()
+
+                            time.sleep(4)
+                            print_device_standby_message()
                     else:
                         logger.warn("Unknown websocket packet!")
                         logger.warn(json.dumps(data))

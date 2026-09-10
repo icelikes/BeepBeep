@@ -16,6 +16,8 @@ from configuration.door import *
 
 # from configuration.memberbucks import *
 
+# from configuration.fobtester import *
+
 # =========================================================================
 # =========================== Portal Settings =============================
 # =========================================================================

@@ -27,7 +27,7 @@ WIFI_PASS = "12345678"
 # =========================================================================
 # ========================== General Settings =============================
 # =========================================================================
-DEVICE_TYPE = "door"  # "door", "interlock" or "memberbucks"
+DEVICE_TYPE = "door"  # "door", "interlock", "memberbucks" or "fobtester"
 LOCK_REVERSED = False
 READER_LED_REVERSED = True
 RELAY_REVERSED = False
